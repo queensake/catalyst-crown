@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background-color: #978B7F;
+            font-family: "Times New Roman", serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+        .frame-container {
+            display: flex;
+            justify-content: center;
+            gap: 212px;
+            align-items: center;
+            width: 100%;
+            padding: 12px 0 0 0;
+            z-index: 2;
+        }
+        .frame-container img {
+            width: 297px;
+        }
+        .title {
+            text-align: center;
+            color: #7E572C;
+            font-size: 59.5px;
+            margin-top: 25px;
+            margin-bottom: 65px;
+            position: relative;
+            z-index: 3;
+        }
+        .main-layout {
+            position: relative;
+            width: 100%;
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+        .border-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            margin-top: -312px;
+            padding: 0 17px;
+            pointer-events: none;
+            z-index: 1;
+        }
+        .border-container img {
+            width: 170px;
+        }
+        .form-wrapper {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            padding: 0 17px;
+            position: relative;
+            z-index: 4;
+            margin-top: -25px;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 17px;
+            width: 100%;
+            max-width: 340px;
+        }
+        form.hidden {
+            display: none !important;
+        }
+        .remember-row { display: flex; align-items: center; gap: 8px; font-size: 16px; color: #2B2115; cursor: pointer; }
+        input[type="text"], input[type="password"], input[type="email"] {
+            text-align: center;
+            color: #2B2115;
+            font-size: 27.2px;
+            width: 100%;
+            background: transparent;
+            border: 2px solid #2B2115;
+            border-radius: 6.8px;
+            padding: 8.5px;
+        }
+        input::placeholder {
+            color: #2B2115;
+            opacity: 0.6;
+        }
+        button[type="submit"] {
+            font-size: 13.6px;
+            padding: 6.8px 13.6px;
+            width: auto;
+            min-width: 102px;
+            color: white;
+            background-color: #2B2115;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button[type="submit"]:hover {
+            background-color: #3d2f1f;
+        }
+        .forgot-password-box {
+            background-color: #C1B19F;
+            border: 1px solid #B38D73;
+            border-radius: 5px;
+            padding: 6.8px 13.6px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+        .text-btn {
+            font-size: 11.9px;
+            color: #7E572C;
+            background: none;
+            border: none;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+        .forgot-password-box .text-btn {
+            color: #2B2115;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .text-btn:hover, .forgot-password-box .text-btn:hover {
+            color: #5a3d20;
+            text-decoration: underline;
+        }
+        .resend-btn {
+            font-size: 11.9px;
+            color: #ffffff;
+            background: none;
+            border: none;
+            cursor: pointer;
+            text-decoration: underline;
+            font-weight: bold;
+        }
+        .resend-btn:disabled {
+            color: #666666;
+            cursor: not-allowed;
+            text-decoration: none;
+        }
+        .signup-text {
+            color: #ffffff;
+            font-size: 13.6px;
+            text-align: center;
+            margin-top: 4.25px;
+        }
+        .signup-text .text-btn {
+            color: #ffffff;
+            font-weight: bold;
+            text-decoration: underline;
+        }
+        .signup-text .text-btn:hover {
+            color: #e0e0e0;
+        }
+        .error-message {
+            color: white;
+            font-size: 17px;
+            text-align: center;
+            display: none;
+            word-break: break-word;
+        }
+        .error-message.show {
+            display: block;
+        }
+        .success-message {
+            color: white;
+            font-size: 15.3px;
+            text-align: center;
+            display: none;
+            word-break: break-word;
+        }
+        .success-message.show {
+            display: block;
+        }
+        .form-instruction {
+            color: #2B2115;
+            font-size: 13.6px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="frame-container">
+        <img src="up_frame_without_center.png" alt="Top Frame Left">
+        <img src="up_frame_without_center.png" alt="Top Frame Right" style="transform: scaleX(-1);">
+    </div>
+
+    <h1 class="title" id="pageTitle">Welcome to Catalyst Crown</h1>
+
+    <div class="main-layout">
+        <div class="border-container">
+            <img src="border.png" alt="Left Border">
+            <img src="border.png" alt="Right Border" style="transform: scaleX(-1);">
+        </div>
+
+        <div class="form-wrapper">
+
+            <!-- A. Login Form -->
+            <form id="loginForm">
+                <input type="text" id="identifier" name="identifier" placeholder="Username or email" required>
+                <input type="password" id="password" name="password" placeholder="Password" required>
+                <label class="remember-row"><input type="checkbox" id="rememberMe"> Remember me</label>
+                <button type="submit">Login</button>
+
+                <div class="forgot-password-box">
+                    <button type="button" id="forgotPasswordBtn" class="text-btn">Forgot Password?</button>
+                </div>
+
+                <p class="signup-text">Not a member? <button type="button" id="goToRegisterBtn" class="text-btn">Sign up</button></p>
+
+                <div id="loginError" class="error-message"></div>
+            </form>
+
+            <!-- B. Register Form -->
+            <form id="registerForm" class="hidden">
+                <input type="text" id="regUsername" name="username" placeholder="Username" required>
+                <input type="email" id="regEmail" name="email" placeholder="Email Address" required>
+                <input type="password" id="regPassword" name="password" placeholder="Password" required>
+                <input type="password" id="regConfirmPassword" name="confirm_password" placeholder="Confirm Password" required>
+
+                <button type="submit" id="regSubmitBtn">Sign Up</button>
+
+                <p class="signup-text">Already have an account? <button type="button" id="goToLoginFromRegBtn" class="text-btn">Login</button></p>
+
+                <div id="regError" class="error-message"></div>
+            </form>
+
+            <!-- C. Register/Login Verification Form -->
+            <form id="verifyForm" class="hidden">
+                <p class="form-instruction" id="verifyInstruction">Enter the 6-digit verification code sent to your email</p>
+                <input type="text" id="verifyCode" name="verification_code" placeholder="000000" maxlength="6" required>
+                <button type="submit">Verify Account</button>
+
+                <button type="button" id="resendCodeBtn" class="resend-btn">Resend Code</button>
+
+                <div id="verifyMessage" class="success-message"></div>
+                <div id="verifyError" class="error-message"></div>
+                <button type="button" id="backToLoginFromVerifyBtn" class="text-btn">Back to Login</button>
+            </form>
+
+            <!-- D. Forgot Password Form -->
+            <form id="forgotPasswordForm" class="hidden">
+                <p class="form-instruction">Enter your email address to receive a password reset link.</p>
+                <input type="email" id="forgotEmail" name="email" placeholder="Email Address" required>
+                <button type="submit" id="resetSubmitBtn">Send Reset Link</button>
+                <div id="forgotMessage" class="success-message"></div>
+                <div id="forgotError" class="error-message"></div>
+                <button type="button" id="backToLoginFromForgotBtn" class="text-btn">Back to Login</button>
+            </form>
+
+            <!-- E. 2FA Login Form -->
+            <form id="twoFAForm" class="hidden">
+                <p class="form-instruction">Enter the 6-digit 2FA code sent to your email</p>
+                <input type="text" id="twoFACode" name="twoFACode" placeholder="000000" maxlength="6" required>
+                <button type="submit">Verify</button>
+                <div id="twoFAError" class="error-message"></div>
+                <button type="button" id="backBtn" class="text-btn">Back</button>
+            </form>
+
+        </div>
+    </div>
+
+    <script>
+        const pageTitle = document.getElementById('pageTitle');
+        const loginForm = document.getElementById('loginForm');
+        const registerForm = document.getElementById('registerForm');
+        const verifyForm = document.getElementById('verifyForm');
+        const forgotPasswordForm = document.getElementById('forgotPasswordForm');
+        const twoFAForm = document.getElementById('twoFAForm');
+
+        // Buttons
+        const forgotPasswordBtn = document.getElementById('forgotPasswordBtn');
+        const goToRegisterBtn = document.getElementById('goToRegisterBtn');
+        const goToLoginFromRegBtn = document.getElementById('goToLoginFromRegBtn');
+        const backToLoginFromForgotBtn = document.getElementById('backToLoginFromForgotBtn');
+        const backToLoginFromVerifyBtn = document.getElementById('backToLoginFromVerifyBtn');
+        const backBtn = document.getElementById('backBtn');
+        const regSubmitBtn = document.getElementById('regSubmitBtn');
+        const resendCodeBtn = document.getElementById('resendCodeBtn');
+
+        // Errors & Messages
+        const loginError = document.getElementById('loginError');
+        const regError = document.getElementById('regError');
+        const verifyError = document.getElementById('verifyError');
+        const verifyMessage = document.getElementById('verifyMessage');
+        const forgotError = document.getElementById('forgotError');
+        const forgotMessage = document.getElementById('forgotMessage');
+        const twoFAError = document.getElementById('twoFAError');
+
+        // State & Cooldown Timer
+        let currentRegEmail = '';
+        let cooldownTimer = null;
+
+        function startCooldown(seconds) {
+            let left = seconds;
+            resendCodeBtn.disabled = true;
+            resendCodeBtn.textContent = `Resend Code (${left}s)`;
+
+            clearInterval(cooldownTimer);
+            cooldownTimer = setInterval(() => {
+                left--;
+                if (left <= 0) {
+                    clearInterval(cooldownTimer);
+                    resendCodeBtn.disabled = false;
+                    resendCodeBtn.textContent = 'Resend Code';
+                } else {
+                    resendCodeBtn.textContent = `Resend Code (${left}s)`;
+                }
+            }, 1000);
+        }
+
+        function clearMessages() {
+            [loginError, regError, verifyError, verifyMessage, forgotError, forgotMessage, twoFAError].forEach(el => {
+                el.classList.remove('show');
+                el.textContent = '';
+            });
+        }
+
+        async function handleResponse(res) {
+            if (!res.ok) {
+                const errData = await res.json().catch(() => null);
+                if (errData && errData.message) {
+                    throw new Error(errData.message);
+                }
+                throw new Error(`Server status ${res.status}: ${res.statusText}`);
+            }
+            return await res.json();
+        }
+
+        // 1. LOGIN SUBMIT (Connected to unverified redirect flow)
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            clearMessages();
+            const identifier = document.getElementById('identifier').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const res = await fetch('/project_task_manager/api/login.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({ identifier, password, remember_me: document.getElementById('rememberMe').checked ? 'true' : 'false' })
+                });
+
+                const data = await handleResponse(res);
+
+                if (data.needs_2fa) {
+                    loginForm.classList.add('hidden');
+                    twoFAForm.classList.remove('hidden');
+                    document.getElementById('twoFACode').focus();
+                } else if (data.needs_verification) {
+                    // INTERCEPT UNVERIFIED USER HERE
+                    currentRegEmail = data.email || identifier;
+                    loginForm.classList.add('hidden');
+                    verifyForm.classList.remove('hidden');
+                    pageTitle.textContent = "Verify Account";
+                    verifyMessage.textContent = "Your account is not verified yet. Please enter the code sent to your email.";
+                    verifyMessage.classList.add('show');
+                    document.getElementById('verifyCode').focus();
+                } else if (data.success) {
+                    localStorage.setItem('username', data.username);
+                    window.location.href = '/project_task_manager/pages/main_page.html';
+                } else {
+                    loginError.textContent = data.message || 'Login failed';
+                    loginError.classList.add('show');
+                }
+            } catch (err) {
+                loginError.textContent = err.message;
+                loginError.classList.add('show');
+            }
+        });
+
+        // 2. REGISTER SUBMIT
+        registerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            clearMessages();
+            regSubmitBtn.disabled = true;
+
+            const username = document.getElementById('regUsername').value;
+            const email = document.getElementById('regEmail').value;
+            const password = document.getElementById('regPassword').value;
+            const confirm_password = document.getElementById('regConfirmPassword').value;
+
+            currentRegEmail = email;
+
+            try {
+                const res = await fetch('/project_task_manager/api/register.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({ username, email, password, confirm_password })
+                });
+
+                const data = await handleResponse(res);
+
+                let cleanMessage = data.message || '';
+                if (cleanMessage.includes("Your account is ready, but we could not send")) {
+                    cleanMessage = "Your account is ready, but we could not send your confirmation email.";
+                }
+
+                if (data.success) {
+                    registerForm.classList.add('hidden');
+                    verifyForm.classList.remove('hidden');
+                    pageTitle.textContent = "Verify Account";
+                    verifyMessage.textContent = cleanMessage;
+                    verifyMessage.classList.add('show');
+                    document.getElementById('verifyCode').focus();
+                    startCooldown(15);
+                } else {
+                    if (data.cooldown_seconds_left) {
+                        startCooldown(data.cooldown_seconds_left);
+                    }
+                    regError.textContent = cleanMessage || 'Registration failed.';
+                    regError.classList.add('show');
+                }
+            } catch (err) {
+                regError.textContent = err.message;
+                regError.classList.add('show');
+            } finally {
+                regSubmitBtn.disabled = false;
+            }
+        });
+
+        // 3. RESEND CODE SUBMIT (Calls resend_code.php)
+        resendCodeBtn.addEventListener('click', async () => {
+            clearMessages();
+            if (!currentRegEmail) {
+                verifyError.textContent = 'Missing email address. Please go back to login.';
+                verifyError.classList.add('show');
+                return;
+            }
+
+            try {
+                const res = await fetch('/project_task_manager/api/resend_code.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({ email: currentRegEmail })
+                });
+
+                const data = await handleResponse(res);
+
+                if (data.success) {
+                    verifyMessage.textContent = data.message;
+                    verifyMessage.classList.add('show');
+                    startCooldown(15);
+                } else {
+                    verifyError.textContent = data.message || 'Could not resend code.';
+                    verifyError.classList.add('show');
+                    if (data.cooldown_seconds_left) {
+                        startCooldown(data.cooldown_seconds_left);
+                    }
+                }
+            } catch (err) {
+                verifyError.textContent = err.message;
+                verifyError.classList.add('show');
+            }
+        });
+
+        // 4. VERIFY CODE SUBMIT
+        verifyForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            clearMessages();
+            const verification_code = document.getElementById('verifyCode').value;
+
+            try {
+                const res = await fetch('/project_task_manager/api/verification_code.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({ email: currentRegEmail, verification_code })
+                });
+
+                const data = await handleResponse(res);
+
+                if (data.success) {
+                    verifyForm.classList.add('hidden');
+                    loginForm.classList.remove('hidden');
+                    pageTitle.textContent = "Welcome to Catalyst Crown";
+                    loginError.textContent = 'Account verified successfully! Please log in.';
+                    loginError.classList.add('show');
+                } else {
+                    verifyError.textContent = data.message || 'Verification failed.';
+                    verifyError.classList.add('show');
+                }
+            } catch (err) {
+                verifyError.textContent = err.message;
+                verifyError.classList.add('show');
+            }
+        });
+
+        // 5. FORGOT PASSWORD SUBMIT
+        forgotPasswordForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            clearMessages();
+            const email = document.getElementById('forgotEmail').value;
+
+            try {
+                const res = await fetch('/project_task_manager/api/forgot_password.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({ email })
+                });
+
+                const data = await handleResponse(res);
+
+                if (data.success) {
+                    forgotMessage.textContent = data.message;
+                    forgotMessage.classList.add('show');
+                } else {
+                    forgotError.textContent = data.message || 'Error processing request.';
+                    forgotError.classList.add('show');
+                }
+            } catch (err) {
+                forgotError.textContent = err.message;
+                forgotError.classList.add('show');
+            }
+        });
+
+        // VIEW TOGGLES
+        goToRegisterBtn.addEventListener('click', () => {
+            clearMessages();
+            loginForm.classList.add('hidden');
+            registerForm.classList.remove('hidden');
+            pageTitle.textContent = "Create Account";
+            document.getElementById('regUsername').focus();
+        });
+
+        goToLoginFromRegBtn.addEventListener('click', () => {
+            clearMessages();
+            registerForm.classList.add('hidden');
+            loginForm.classList.remove('hidden');
+            pageTitle.textContent = "Welcome to Catalyst Crown";
+            document.getElementById('identifier').focus();
+        });
+
+        forgotPasswordBtn.addEventListener('click', () => {
+            clearMessages();
+            loginForm.classList.add('hidden');
+            forgotPasswordForm.classList.remove('hidden');
+            pageTitle.textContent = "Reset Password";
+            document.getElementById('forgotEmail').focus();
+        });
+
+        backToLoginFromForgotBtn.addEventListener('click', () => {
+            clearMessages();
+            forgotPasswordForm.classList.add('hidden');
+            loginForm.classList.remove('hidden');
+            pageTitle.textContent = "Welcome to Catalyst Crown";
+            document.getElementById('identifier').focus();
+        });
+
+        backToLoginFromVerifyBtn.addEventListener('click', () => {
+            clearMessages();
+            verifyForm.classList.add('hidden');
+            loginForm.classList.remove('hidden');
+            pageTitle.textContent = "Welcome to Catalyst Crown";
+            document.getElementById('identifier').focus();
+        });
+
+        backBtn.addEventListener('click', () => {
+            clearMessages();
+            twoFAForm.classList.add('hidden');
+            loginForm.classList.remove('hidden');
+            pageTitle.textContent = "Welcome to Catalyst Crown";
+        });
+
+        // 6. 2FA FORM SUBMIT
+        twoFAForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            clearMessages();
+            const twoFACode = document.getElementById('twoFACode').value;
+
+            try {
+                const res = await fetch('/project_task_manager/api/login_verify_2fa.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({ code: twoFACode })
+                });
+
+                const data = await handleResponse(res);
+
+                if (data.success) {
+                    localStorage.setItem('username', data.username);
+                    window.location.href = '/project_task_manager/pages/main_page.html';
+                } else {
+                    twoFAError.textContent = data.message || '2FA verification failed';
+                    twoFAError.classList.add('show');
+                }
+            } catch (err) {
+                twoFAError.textContent = err.message;
+                twoFAError.classList.add('show');
+            }
+        });
+    </script>
+</body>
+</html>

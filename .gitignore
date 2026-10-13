@@ -1,0 +1,14 @@
+# Secrets and local-only config
+email_config.php
+db_local.php
+.env
+*.env
+
+# Large or generated folders
+vendor/
+node_modules/
+
+# Logs and OS files
+*.log
+.DS_Store
+Thumbs.db

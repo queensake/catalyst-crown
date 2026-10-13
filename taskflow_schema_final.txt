@@ -1,0 +1,316 @@
+-- =========================================================
+-- TaskFlow — Updated Database Schema
+-- Reflects: daily tasks, archive/status, completed flag,
+-- fixed FKs on completions tables. No notification-time
+-- columns (feature scoped down to in-app digest only).
+-- =========================================================
+
+-- Users
+CREATE TABLE users (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  username VARCHAR(50) NOT NULL,
+  email VARCHAR(255) NOT NULL UNIQUE,
+  password VARCHAR(255) NOT NULL,      -- bcrypt hash, never plaintext
+  is_verified BOOLEAN DEFAULT FALSE,   -- flips true once confirmation code is entered correctly
+  verification_code VARCHAR(10),       -- e.g. 6-digit code sent via PHPMailer
+  verification_code_expires TIMESTAMP NULL DEFAULT NULL,
+  verification_last_sent TIMESTAMP NULL DEFAULT NULL,    -- drives the 15-second resend cooldown
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- The 13 preset colors available for tasks, habits, and categories.
+-- Fixed set — insert your 13 hex codes here once, referenced everywhere else by ID.
+CREATE TABLE task_colors (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  hex_code VARCHAR(7) NOT NULL UNIQUE
+);
+
+INSERT INTO task_colors (hex_code) VALUES
+('#B16AA8'),
+('#826AB1'),
+('#6A6FB1'),
+('#6A8FB1'),
+('#6AAFB1'),
+('#85B16A'),
+('#B1A66A'),
+('#B1936A'),
+('#B17F6A'),
+('#B1746A'),
+('#B16A6F'),
+('#B16A7E'),
+('#B16A93');
+
+-- Categories (user defined, anything they type; no archive — delete only)
+CREATE TABLE categories (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  name VARCHAR(100) NOT NULL,
+  color_id INT,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (color_id) REFERENCES task_colors(id)
+);
+
+-- Habits
+CREATE TABLE habits (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  category_id INT,
+  name VARCHAR(255) NOT NULL,
+  frequency ENUM('daily','weekly','monthly','yearly') NOT NULL,
+  times_per_frequency INT DEFAULT 1,
+  tracking ENUM('streak','completion','both') NOT NULL,
+  color_id INT,
+  status ENUM('active','archived') DEFAULT 'active',  -- always archivable, no completion gate
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (category_id) REFERENCES categories(id),
+  FOREIGN KEY (color_id) REFERENCES task_colors(id)
+);
+
+-- Habit subtasks (added only at creation time; edit can rename/reschedule/delete existing, plus a separate "add subtask" action in edit per later decision)
+CREATE TABLE habit_subtasks (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  habit_id INT NOT NULL,
+  name VARCHAR(255) NOT NULL,
+  frequency ENUM('daily','weekly','monthly','yearly'),
+  times_per_frequency INT DEFAULT 1,
+  FOREIGN KEY (habit_id) REFERENCES habits(id) ON DELETE CASCADE
+);
+
+-- Tasks
+CREATE TABLE tasks (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  category_id INT,
+  name VARCHAR(255) NOT NULL,
+  frequency ENUM('daily','weekly','monthly','yearly') NOT NULL,
+  tracking ENUM('streak','completion','both') NOT NULL,
+  deadline DATE,
+  color_id INT,
+  completed BOOLEAN DEFAULT FALSE,      -- drives Archive eligibility + no-subtask progress (0/100)
+  status ENUM('active','archived') DEFAULT 'active',  -- Archive disabled once completed = TRUE
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (category_id) REFERENCES categories(id),
+  FOREIGN KEY (color_id) REFERENCES task_colors(id)
+);
+
+-- Task subtasks
+CREATE TABLE task_subtasks (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  task_id INT NOT NULL,
+  name VARCHAR(255) NOT NULL,
+  frequency ENUM('daily','weekly','monthly','yearly'),
+  deadline DATE,
+  FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
+);
+
+-- Completions for habits (tracks count per entry)
+CREATE TABLE habit_completions (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  habit_id INT,
+  subtask_id INT,
+  completed_date DATE NOT NULL,
+  count_completed INT DEFAULT 0,
+  manually_edited BOOLEAN DEFAULT FALSE,
+  edited_at TIMESTAMP NULL DEFAULT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,   -- was missing
+  FOREIGN KEY (habit_id) REFERENCES habits(id) ON DELETE CASCADE,
+  FOREIGN KEY (subtask_id) REFERENCES habit_subtasks(id) ON DELETE CASCADE
+);
+
+-- Completions for tasks
+CREATE TABLE task_completions (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  task_id INT,
+  subtask_id INT,
+  completed_date DATE NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,   -- was missing
+  FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
+  FOREIGN KEY (subtask_id) REFERENCES task_subtasks(id) ON DELETE CASCADE
+);
+
+-- Streaks (unaffected by archive — history preserved, no auto-reset)
+-- ⚠️ BACKEND REMINDER: item_id is polymorphic (points to habits OR tasks
+-- depending on item_type) and has NO foreign key constraint — MySQL will
+-- NOT catch an invalid item_id. Every INSERT/UPDATE here in PHP must
+-- manually check that item_id actually exists in the correct table
+-- (habits if item_type='habit', tasks if item_type='task') before writing.
+CREATE TABLE streaks (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  item_type ENUM('habit','task') NOT NULL,
+  item_id INT NOT NULL,                 -- polymorphic; validated in PHP, not FK-enforced
+  current_streak INT DEFAULT 0,
+  longest_streak INT DEFAULT 0,
+  last_completed DATE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Rewards type 1 — linked to habit or task
+-- ⚠️ BACKEND REMINDER: same polymorphic item_id issue as streaks above —
+-- validate item_id against the correct table (habits/tasks) in PHP
+-- before every INSERT/UPDATE, since there's no FK enforcing it here.
+CREATE TABLE completion_rewards (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  item_type ENUM('habit','task') NOT NULL,
+  item_id INT NOT NULL,                 -- polymorphic; validated in PHP, not FK-enforced
+  reward_name VARCHAR(255) NOT NULL,
+  unlocked BOOLEAN DEFAULT FALSE,
+  unlocked_at TIMESTAMP NULL DEFAULT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Rewards type 2 — independent motivation gifts (manual progress, no reminder mechanism)
+CREATE TABLE motivation_gifts (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  gift_name VARCHAR(255) NOT NULL,
+  description TEXT,
+  progress INT DEFAULT 0,
+  target_date DATE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- The 6 wellness metrics tracked daily in the journal — fixed set.
+CREATE TABLE wellness_metric_types (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(50) NOT NULL UNIQUE
+);
+
+INSERT INTO wellness_metric_types (name) VALUES
+('Sleep'),
+('Stress'),
+('Mood'),
+('Energy'),
+('Water'),
+('Food');
+
+-- Wellness metrics — part of the journal, one row per metric per day.
+CREATE TABLE wellness_metrics (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  entry_date DATE NOT NULL,
+  metric_type_id INT NOT NULL,
+  value TINYINT NOT NULL,             -- 1-5 quality rating
+  notes TEXT,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (metric_type_id) REFERENCES wellness_metric_types(id),
+  UNIQUE (user_id, entry_date, metric_type_id)
+);
+
+-- Journal entries (auto generated daily, habits only; must stop generating for archived habits)
+CREATE TABLE journal_entries (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  entry_date DATE NOT NULL,
+  habit_id INT NOT NULL,
+  completed BOOLEAN DEFAULT FALSE,
+  auto_marked_missed BOOLEAN DEFAULT FALSE,
+  manually_edited BOOLEAN DEFAULT FALSE,
+  edited_at TIMESTAMP NULL DEFAULT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (habit_id) REFERENCES habits(id) ON DELETE CASCADE
+);
+
+
+ALTER TABLE habits 
+ADD COLUMN habit_type ENUM('build','avoid') DEFAULT 'build' AFTER tracking;
+
+ALTER TABLE users ADD COLUMN password_reset_token VARCHAR(64);
+ALTER TABLE users ADD COLUMN password_reset_token_expires TIMESTAMP NULL DEFAULT NULL;
+
+ALTER TABLE tasks ADD COLUMN notes TEXT;
+ALTER TABLE tasks ADD COLUMN goal TEXT;
+
+ALTER TABLE habits ADD COLUMN notes TEXT;
+ALTER TABLE habits ADD COLUMN goal TEXT;
+
+ALTER TABLE categories ADD COLUMN notes TEXT;
+
+CREATE TABLE rate_limit_attempts (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    identifier VARCHAR(255) NOT NULL,  -- username, email, or IP
+    action VARCHAR(50) NOT NULL,       -- 'login', 'register', 'forgot_password', etc.
+    attempt_count INT DEFAULT 1,
+    last_attempt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    locked_until TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_attempt (identifier, action),
+    INDEX idx_locked (action, locked_until)
+);
+
+-- Add reminder support to existing tables
+ALTER TABLE tasks 
+ADD COLUMN reminder_datetime DATETIME NULL DEFAULT NULL AFTER goal,
+ADD INDEX idx_task_reminder (user_id, reminder_datetime);
+
+ALTER TABLE habits 
+ADD COLUMN reminder_datetime DATETIME NULL DEFAULT NULL AFTER goal,
+ADD INDEX idx_habit_reminder (user_id, reminder_datetime);
+
+-- Track which reminders have been shown
+CREATE TABLE reminder_notifications (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  item_type ENUM('task','habit') NOT NULL,
+  item_id INT NOT NULL,
+  reminder_datetime DATETIME NOT NULL,
+  notified_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  UNIQUE (item_type, item_id, reminder_datetime)
+);
+
+ALTER TABLE task_subtasks
+    ADD COLUMN reminder_datetime DATETIME NULL DEFAULT NULL,
+    ADD COLUMN notification_enabled TINYINT(1) NOT NULL DEFAULT 0;
+
+ALTER TABLE habit_subtasks
+    ADD COLUMN reminder_datetime DATETIME NULL DEFAULT NULL,
+    ADD COLUMN notification_enabled TINYINT(1) NOT NULL DEFAULT 0;
+
+ALTER TABLE habits
+ADD COLUMN notification_enabled TINYINT(1) NOT NULL DEFAULT 0;
+
+ALTER TABLE tasks
+ADD COLUMN notification_enabled TINYINT(1) NOT NULL DEFAULT 0;
+
+ALTER TABLE reminder_notifications
+  MODIFY COLUMN item_type ENUM('task','habit','subtask','subhabit') NOT NULL;
+
+ALTER TABLE task_subtasks
+  ADD COLUMN IF NOT EXISTS completed TINYINT(1) NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS completed_date DATE NULL;
+
+ALTER TABLE habit_subtasks
+  ADD COLUMN IF NOT EXISTS completed TINYINT(1) NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS completed_date DATE NULL;
+
+-- 1. Exercise becomes the 7th wellness metric (uses the existing wellness_metrics table)
+INSERT INTO wellness_metric_types (name) VALUES ('Exercise');
+
+-- 2. Free-text journal entry: one row per user per day (ratings stay in wellness_metrics)
+CREATE TABLE journal_days (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  entry_date DATE NOT NULL,
+  content TEXT NULL,
+  is_locked BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NULL DEFAULT NULL,
+  UNIQUE KEY uniq_journal_day (user_id, entry_date),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+ALTER TABLE reminder_notifications ADD COLUMN is_read TINYINT(1) NOT NULL DEFAULT 0;
+ALTER TABLE categories ADD COLUMN status ENUM('active','archived') DEFAULT 'active';
+
+-- Account-wide task streak
+ALTER TABLE users
+  ADD COLUMN task_streak INT NOT NULL DEFAULT 0,
+  ADD COLUMN longest_task_streak INT NOT NULL DEFAULT 0;
+
